@@ -16,6 +16,9 @@ Your newsroom backend ──x-api-key──►  Zaid backend  (this folder, one 
 Your website (viewers) ──/api/public/viewer-token or the /watch iframe──► LiveKit room
 ```
 
+**Integration guide:** start with [docs/README.md](docs/README.md) (how it works, requirements, setup,
+connecting your backend and website, real-time timings, troubleshooting). Endpoints: [API.md](API.md).
+
 No language model reads the news: the approved script is spoken exactly as written. Zaid is the agent that
 presents, keeps the order, prepares the next audio while one plays, puts breaking news right after the segment on
 air, and skips anything withdrawn.
