@@ -1,6 +1,6 @@
 # 4. Connect your backend
 
-Your backend talks to `https://<zaid>/api/v1` with the header `x-api-key: <key from the admin page>`.
+Your backend talks to `https://<zaid>/api/v1` with the header `x-api-key: <key from the console → Website & API>`.
 Server to server only: the key gives full control of the broadcast.
 
 ## Map your newsroom to Zaid
@@ -60,6 +60,10 @@ await zaid('POST', '/broadcast/end')
 
 ## Follow the show live
 
+Two options: pull with Server-Sent Events (below), or let Zaid push every event to your URL with the signed
+webhook ([08-realtime-relay.md](08-realtime-relay.md)).
+
+
 `GET /api/v1/events` is a Server-Sent Events stream:
 
 - `rundown`: `{ control, segments, presenter }` on every change (what is on air, ready, preparing, done)
@@ -90,10 +94,10 @@ Use it to show "on air now" in your own control room, or to mark stories as broa
 | Code | Meaning | Action |
 |---|---|---|
 | 400 | Bad input (missing script, script over 3000 characters…) | Fix the request |
-| 401 | Wrong or missing API key | Check the key (it changes if someone presses "New key") |
+| 401 | Wrong or missing API key | Check the key (it changes if someone presses "Replace key") |
 | 404 | Segment not found | It was deleted or the rundown was cleared |
 | 409 | Not allowed now (editing a segment on air, starting while a show runs, clearing while live) | Wait or end first |
-| 502 / 503 | LiveKit, ElevenLabs or the presenter is not ready | Check the admin page; retry after a few seconds |
+| 502 / 503 | LiveKit, ElevenLabs or the presenter is not ready | Check the console; retry after a few seconds |
 
 ## Writing scripts for the voice
 

@@ -1,6 +1,6 @@
 # 5. Connect your website
 
-First add your site's origin on the admin page → "Allowed website origins" (for example
+First add your site's address on the console → **Website & API** → "Allowed website addresses" (for example
 `https://news.example.com`). That allows the iframe and the browser calls below. No API key is used in the browser.
 
 ## Option A: embed the watch page (simplest)
@@ -10,8 +10,8 @@ First add your site's origin on the admin page → "Allowed website origins" (fo
         allow="autoplay" style="width:100%;aspect-ratio:16/9;border:0"></iframe>
 ```
 
-`embed=1` hides the page header. The viewer clicks «شاهد البث» once (browsers block sound until a click), then sees
-Zaid's face (or a placeholder in voice-only mode), the red headline bar ("عاجل" for breaking news) and the caption.
+`embed=1` hides the page header. The viewer clicks **Watch live** once (browsers block sound until a click), then sees
+Zaid's face (or a placeholder in voice-only mode), the red headline bar ("عاجل" or "Breaking" for breaking news, right to left for Arabic) and the caption.
 
 ## Option B: your own player
 

@@ -1,7 +1,7 @@
 # Zaid backend — API reference
 
 Base URL: `https://<your-zaid-server>/api/v1`
-Every `/api/v1` call needs the header `x-api-key: <key>` (copy it from the admin page → "Connect your website").
+Every `/api/v1` call needs the header `x-api-key: <key>` (copy it from the console → **Website & API**).
 Call it **from your backend only**: never put the key in browser code. Bodies are JSON (`content-type: application/json`).
 Errors come back as `{ "error": "message" }` with a status code: 400 bad input, 401 wrong key, 404 not found,
 409 not allowed in the current state, 413 body too large, 502/503 a provider or the presenter is not ready.
@@ -77,7 +77,7 @@ Studio states (`control.state`): `idle`, `preparing`, `ready`, `live`, `ended`.
 ### Examples
 
 ```bash
-KEY=zk_...           # from the admin page
+KEY=zk_...           # from the console → Website & API
 API=https://zaid.example.com/api/v1
 
 # Add an approved story (Zaid reads the script word for word)
@@ -120,6 +120,8 @@ headers. Events:
 - `rundown`: `{ control, segments, presenter }`, sent on every change
 - `log`: one log entry `{ id, event, segment_id, version, detail, at }`
 
+The same events can be pushed to your URL, signed: see [docs/08-realtime-relay.md](docs/08-realtime-relay.md).
+
 Useful log events: `created`, `edited`, `approved`, `withdrawn`, `preparing`, `ready`, `on_air`, `done`, `blocked`,
 `studio_live`, `studio_ended`, `runway_started`, `runway_failed` (with the provider's error), `voice_only`.
 
@@ -130,7 +132,7 @@ Useful log events: `created`, `edited`, `approved`, `withdrawn`, `preparing`, `r
 | GET | `/api/public/status` | `{ state, onAir: { id, headline, kind } \| null, face }` |
 | GET | `/api/public/viewer-token` | `{ url, token, room }`: a LiveKit token that can only watch (2 hours) |
 
-Add your site's origin (for example `https://news.example.com`) under "Allowed website origins" on the admin page,
+Add your site's origin (for example `https://news.example.com`) under "Allowed website addresses" on the console → Website & API,
 so the browser may call these and embed the watch page.
 
 **Simplest:** embed the watch page.

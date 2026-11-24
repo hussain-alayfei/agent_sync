@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Broadcast console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans+Arabic:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --canvas: #EEF1F4;
+  --panel: #FFFFFF;
+  --ink: #18212B;
+  --muted: #5E6A78;
+  --line: #D8DEE6;
+  --line-strong: #B9C2CD;
+  --signal: #1F5FD1;
+  --signal-soft: #E8EFFB;
+  --air: #D42B2B;
+  --air-soft: #FBEAEA;
+  --cue: #B97A00;
+  --cue-soft: #FBF3E1;
+  --go: #17844A;
+  --go-soft: #E6F4EC;
+  --r: 6px;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --arabic: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 15px/1.5 var(--sans); color: var(--ink); background: var(--canvas); -webkit-font-smoothing: antialiased; }
+a { color: var(--signal); text-underline-offset: 2px; }
+.ar { font-family: var(--arabic); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: var(--r); border: 1px solid var(--line-strong); background: var(--panel); cursor: pointer; font-weight: 500; font-size: 14px; white-space: nowrap; }
+.btn:hover { border-color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: default; border-color: var(--line-strong); }
+.btn.primary { background: var(--signal); border-color: var(--signal); color: #fff; }
+.btn.primary:hover { background: #184EAE; }
+.btn.air { background: var(--air); border-color: var(--air); color: #fff; }
+.btn.air:hover { background: #B42222; }
+.btn.go { background: var(--go); border-color: var(--go); color: #fff; }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--muted); padding: 0 8px; }
+.btn.quiet:hover { color: var(--ink); background: var(--canvas); }
+.btn.small { height: 30px; padding: 0 10px; font-size: 13px; }
+
+/* fields */
+.field { display: grid; gap: 6px; }
+.field label { font-weight: 500; font-size: 14px; }
+.field .help { font-size: 13px; color: var(--muted); }
+input[type=text], input[type=password], input[type=url], select, textarea {
+  width: 100%; height: 38px; padding: 0 11px; border: 1px solid var(--line-strong); border-radius: var(--r); background: #fff; font-size: 14px;
+}
+textarea { height: auto; min-height: 110px; padding: 9px 11px; line-height: 1.7; resize: vertical; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--signal); box-shadow: 0 0 0 3px var(--signal-soft); }
+input.code { font-family: var(--mono); font-size: 13px; }
+
+/* login */
+#login { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+#login form { width: min(380px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 28px; display: grid; gap: 16px; }
+#login h1 { margin: 0; font-size: 20px; font-weight: 600; }
+#login p { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* shell */
+.shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+aside { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+.brand { padding: 20px 20px 14px; }
+.brand b { display: block; font-size: 16px; font-weight: 600; }
+.brand span { font-size: 13px; color: var(--muted); }
+
+/* the tally: the one loud element */
+.tally { margin: 0 14px 10px; border-radius: 10px; padding: 14px; background: var(--canvas); border: 1px solid var(--line); display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: center; }
+.lamp { grid-row: span 2; width: 18px; height: 18px; border-radius: 50%; background: #AAB3BE; box-shadow: inset 0 -2px 3px rgba(0,0,0,.18); }
+.tally .state { font-weight: 600; font-size: 15px; }
+.tally .sub { font-size: 13px; color: var(--muted); min-height: 1.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tally .now { grid-column: 1 / -1; margin-top: 6px; font-size: 14px; line-height: 1.6; display: none; }
+.tally.live { background: var(--air); border-color: var(--air); color: #fff; }
+.tally.live .lamp { background: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.28); animation: pulse 1.6s ease-in-out infinite; }
+.tally.live .sub { color: rgba(255,255,255,.85); }
+.tally.live .now { display: block; }
+.tally.preparing .lamp { background: var(--cue); }
+.tally.ready .lamp { background: var(--go); }
+@keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(255,255,255,.12); } }
+@media (prefers-reduced-motion: reduce) { .tally.live .lamp { animation: none; } }
+
+nav { display: grid; gap: 2px; padding: 6px 10px; }
+nav a { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: var(--r); color: var(--ink); text-decoration: none; font-size: 14px; }
+nav a:hover { background: var(--canvas); }
+nav a[aria-current=page] { background: var(--signal-soft); color: var(--signal); font-weight: 500; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.dot.ok { background: var(--go); } .dot.warn { background: var(--cue); } .dot.bad { background: var(--air); }
+.aside-foot { margin-top: auto; padding: 14px 20px; border-top: 1px solid var(--line); display: grid; gap: 6px; font-size: 14px; }
+.aside-foot button { justify-self: start; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; }
+.aside-foot button:hover { color: var(--ink); }
+
+main { padding: 28px 36px 80px; min-width: 0; }
+.page { max-width: 1080px; min-width: 0; }
+.block { min-width: 0; overflow: hidden; }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.page-head h1 { margin: 0 0 4px; font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+.page-head p { margin: 0; color: var(--muted); max-width: 62ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.block { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 18px; }
+.block-head { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.block-head h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.block-head .note { color: var(--muted); font-size: 13px; }
+.block-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.block-body { padding: 18px 20px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 20px; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 2px 10px; border-radius: 999px; background: var(--canvas); color: var(--muted); white-space: nowrap; }
+.pill.ok { background: var(--go-soft); color: var(--go); }
+.pill.warn { background: var(--cue-soft); color: #8A5B00; }
+.pill.bad { background: var(--air-soft); color: var(--air); }
+.pill.info { background: var(--signal-soft); color: var(--signal); }
+.pill.solid-air { background: var(--air); color: #fff; }
+
+.result { font-size: 14px; padding: 10px 12px; border-radius: var(--r); margin-top: 14px; }
+.result.ok { background: var(--go-soft); color: #0F5F35; }
+.result.bad { background: var(--air-soft); color: #9B1C1C; }
+.result.warn { background: var(--cue-soft); color: #7A5000; }
+.result.busy { background: var(--canvas); color: var(--muted); }
+
+/* monitors (studio) */
+.monitors { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.monitor { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 16px; border-top: 4px solid var(--line-strong); min-height: 128px; display: flex; flex-direction: column; gap: 6px; }
+.monitor .label { font-size: 13px; color: var(--muted); font-weight: 500; }
+.monitor .title { font-size: 17px; font-weight: 600; line-height: 1.6; }
+.monitor .meta { font-size: 13px; color: var(--muted); margin-top: auto; }
+.monitor.air { border-top-color: var(--air); }
+.monitor.air.on { background: var(--air-soft); }
+.monitor.next { border-top-color: var(--go); }
+.monitor.prep { border-top-color: var(--cue); }
+.empty { color: var(--muted); font-weight: 400; font-size: 15px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 13px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+td.headline { font-weight: 500; text-align: left; }
+.monitor .title, .tally .now { text-align: left; }
+tr.played td { color: var(--muted); }
+tr.played td.headline { font-weight: 400; }
+tr.onair td { background: var(--air-soft); }
+td .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.table-wrap { overflow-x: auto; }
+.empty-state { padding: 34px 20px; text-align: center; color: var(--muted); }
+.empty-state b { display: block; color: var(--ink); font-weight: 500; margin-bottom: 4px; }
+
+.composer { display: grid; gap: 14px; }
+.composer .line { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+.check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--signal); }
+
+.log { max-height: 300px; overflow: auto; font-size: 13px; }
+.log div { display: grid; grid-template-columns: 76px 1fr; gap: 10px; padding: 6px 20px; border-bottom: 1px solid var(--canvas); }
+.log time { color: var(--muted); font-variant-numeric: tabular-nums; }
+pre.console { margin: 0; padding: 14px 20px; font: 12.5px/1.6 var(--mono); background: #F7F9FB; max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word; border-radius: 0 0 10px 10px; }
+pre.snippet { margin: 0; padding: 14px 16px; font: 12.5px/1.65 var(--mono); background: #F7F9FB; border: 1px solid var(--line); border-radius: var(--r); overflow: auto; white-space: pre; }
+.keyline { display: flex; gap: 8px; align-items: center; }
+.keyline input { flex: 1; }
+.services { display: grid; gap: 18px; }
+.svc-status { margin-left: auto; }
+.svc-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
+.svc-foot .src { margin-left: auto; font-size: 13px; color: var(--muted); }
+.field .meta { font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; }
+.field .meta button { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 12.5px; }
+.savebar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 14px; padding: 14px 0; background: linear-gradient(to top, var(--canvas) 70%, transparent); }
+dl.facts { display: grid; grid-template-columns: 180px 1fr; gap: 10px 16px; margin: 0; font-size: 14px; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; }
+
+#toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: 90vw; }
+#toast.on { opacity: 1; }
+#toast.bad { background: var(--air); }
+
+@media (max-width: 1000px) {
+  .monitors { grid-template-columns: 1fr; }
+  .grid3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 820px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  nav a { white-space: nowrap; gap: 8px; }
+  .monitor { min-height: 0; }
+  .block-head { flex-wrap: wrap; }
+  .block-head .right { margin-left: 0; width: 100%; }
+  .page-head .actions { width: 100%; }
+  aside { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  nav { grid-auto-flow: column; overflow-x: auto; }
+  .aside-foot { display: none; }
+  main { padding: 20px 16px 80px; }
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+  dl.facts { grid-template-columns: 1fr; gap: 2px; }
+  dl.facts dd { margin-bottom: 10px; }
+}
+</style>
+</head>
+<body>
+
+<section id="login" hidden>
+  <form id="login-form">
+    <div>
+      <h1>Broadcast console</h1>
+      <p>Sign in to run the live presenter.</p>
+    </div>
+    <div class="field">
+      <label for="pw">Admin password</label>
+      <input id="pw" type="password" autocomplete="current-password" required>
+      <span class="help">First start: the server prints it in its console and saves it in <code>data/admin-password.txt</code>.</span>
+    </div>
+    <button class="btn primary" type="submit">Sign in</button>
+    <div id="login-msg" class="result bad" hidden></div>
+  </form>
+</section>
+
+<div class="shell" id="app" hidden>
+  <aside>
+    <div class="brand"><b id="brand-name">Presenter</b><span>Broadcast console</span></div>
+    <div class="tally" id="tally" aria-live="polite">
+      <span class="lamp"></span>
+      <span class="state" id="tally-state">Off air</span>
+      <span class="sub" id="tally-sub">&nbsp;</span>
+      <span class="now ar" id="tally-now" dir="auto"></span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#studio" data-section="studio">Studio <span class="dot" id="nav-studio"></span></a>
+      <a href="#connections" data-section="connections">Connections <span class="dot" id="nav-connections"></span></a>
+      <a href="#website" data-section="website">Website &amp; API</a>
+      <a href="#presenter" data-section="presenter">Presenter <span class="dot" id="nav-presenter"></span></a>
+      <a href="#settings" data-section="settings">Settings</a>
+    </nav>
+    <div class="aside-foot">
+      <a href="/watch" target="_blank" rel="noopener">Open the viewer page</a>
+      <button type="button" id="logout">Sign out</button>
+    </div>
+  </aside>
+
+  <main>
+    <!-- STUDIO -->
+    <section class="page" data-page="studio">
+      <div class="page-head">
+        <div>
+          <h1>Studio</h1>
+          <p>Approved stories are read word for word, in this order. Changes reach the air at the next story.</p>
+        </div>
+        <div class="actions">
+          <button class="btn" id="b-prepare" type="button">Prepare</button>
+          <button class="btn go" id="b-live" type="button">Go live</button>
+          <button class="btn air" id="b-end" type="button">End broadcast</button>
+        </div>
+      </div>
+
+      <div class="monitors">
+        <div class="monitor air" id="m-air"><span class="label">On air</span><span class="title ar" dir="auto" id="m-air-title"></span><span class="meta" id="m-air-meta"></span></div>
+        <div class="monitor next"><span class="label">Up next</span><span class="title ar" dir="auto" id="m-next-title"></span><span class="meta" id="m-next-meta"></span></div>
+        <div class="monitor prep"><span class="label">Preparing audio</span><span class="title ar" dir="auto" id="m-prep-title"></span><span class="meta" id="m-prep-meta"></span></div>
+      </div>
+
+      <div class="block">
+        <div class="block-head">
+          <h2>Rundown</h2><span class="note" id="rundown-count"></span>
+          <div class="right">
+            <button class="btn small" id="b-demo" type="button">Load demo stories</button>
+            <button class="btn small quiet" id="b-clear" type="button">Clear rundown</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Headline</th><th>Type</th><th>Approval</th><th>Version</th><th>Playback</th><th>Audio</th><th>Prepared in</th><th></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="rows-empty" hidden><b>No stories yet</b>Add one below, load the demo stories, or send them from your newsroom with the API.</div>
+      </div>
+
+      <div class="block">
+        <div class="block-head"><h2 id="composer-title">Add a story</h2><span class="note" id="composer-note">The script is read exactly as written.</span></div>
+        <form class="block-body composer" id="composer">
+          <input type="hidden" id="c-id">
+          <div class="field"><label for="c-headline">Headline</label><input id="c-headline" type="text" dir="auto" class="ar" maxlength="200" required></div>
+          <div class="field"><label for="c-script">Script</label><textarea id="c-script" dir="auto" class="ar" maxlength="3000" required></textarea><span class="help">Write numbers as words and add diacritics where a name could be read two ways.</span></div>
+          <div class="line">
+            <label class="check"><input type="checkbox" id="c-breaking"> Breaking news (read right after the story on air)</label>
+            <label class="check"><input type="checkbox" id="c-approve" checked> Approve now</label>
+          </div>
+          <div class="actions"><button class="btn primary" type="submit" id="c-save">Add story</button><button class="btn quiet" type="button" id="c-cancel" hidden>Cancel edit</button></div>
+        </form>
+      </div>
+
+      <div class="block">
+        <div class="block-head"><h2>Activity</h2><span class="note">Everything the presenter and the newsroom did, newest first</span></div>
+        <div class="log" id="log"></div>
+      </div>
+    </section>
+
+    <!-- CONNECTIONS -->
+    <section class="page" data-page="connections" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Connections</h1>
+          <p>The three services the presenter uses. Keys stay on this server and are never shown again after saving, only their last four characters.</p>
+        </div>
+      </div>
+      <form id="keys" autocomplete="off">
+        <div class="services" id="services"></div>
+        <div class="savebar"><button class="btn primary" type="submit">Save connections</button><span id="save-note" class="note"></span></div>
+      </form>
+    </section>
+
+    <!-- WEBSITE & API -->
+    <section class="page" data-page="website" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Website &amp; API</h1>
+          <p>Your newsroom backend sends approved stories with the API key. Your website shows the broadcast. Other systems can follow every event through the webhook.</p>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-head"><h2>Newsroom API</h2><span class="note">Server to server only. Never put this key in browser code.</span></div>
+        <div class="block-body grid2">
+          <div class="field"><label>Base URL</label><input type="text" class="code" id="api-base" readonly></div>
+          <div class="field"><label for="api-key">API key</label>
+            <div class="keyline"><input type="password" class="code" id="api-key" readonly><button class="btn small" type="button" id="key-show">Show</button><button class="btn small" type="button" id="key-copy">Copy</button></div>
+            <div class="meta"><span>Sent as the <code>x-api-key</code> header.</span><button type="button" id="key-rotate">Replace key</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-head"><h2>Show the broadcast on your website</h2></div>
+        <div class="block-body" style="display:grid;gap:16px">
+          <div class="field"><label for="origins">Allowed website addresses</label>
+            <div class="keyline"><input type="text" id="origins" placeholder="https://news.example.com, https://staging.example.com"><button class="btn" type="button" id="origins-save">Save</button></div>
+            <span class="help">Only these sites may embed the viewer page or call <code>/api/public</code> from the browser.</span></div>
+          <div class="field"><label>Embed code</label><pre class="snippet" id="embed"></pre><div><button class="btn small" type="button" id="embed-copy">Copy embed code</button></div></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-head"><h2>Event webhook</h2><span class="note" id="wh-stats"></span></div>
+        <div class="block-body" style="display:grid;gap:16px">
+          <p style="margin:0;color:var(--muted);font-size:14px;max-width:72ch">Every event (story on air, done, withdrawn, broadcast live or ended) is posted here as JSON, signed with HMAC-SHA256 in the <code>x-zaid-signature</code> header. Use it to relay the show into your own real-time channel: your backend, a Supabase Edge Function, a queue.</p>
+          <div class="grid2">
+            <div class="field"><label for="wh-url">Webhook URL</label><input type="url" id="wh-url" placeholder="https://api.example.com/zaid-events"></div>
+            <div class="field"><label>Signing secret</label>
+              <div class="keyline"><input type="password" class="code" id="wh-secret" readonly><button class="btn small" type="button" id="wh-show">Show</button><button class="btn small" type="button" id="wh-copy">Copy</button></div>
+              <div class="meta"><span>Check the signature before trusting an event.</span><button type="button" id="wh-rotate">Replace secret</button></div>
+            </div>
+          </div>
+          <div class="actions"><button class="btn primary" type="button" id="wh-save">Save webhook</button><button class="btn" type="button" id="wh-test">Send test event</button></div>
+          <div class="result" id="wh-result" hidden></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-head"><h2>Quick start for developers</h2><span class="note">Full reference: API.md and the docs folder in the repository</span></div>
+        <div class="block-body"><pre class="snippet" id="snippets"></pre></div>
+      </div>
+    </section>
+
+    <!-- PRESENTER -->
+    <section class="page" data-page="presenter" hidden>
+      <div class="page-head">
+        <div>
+          <h1>Presenter</h1>
+          <p>The agent process that joins the LiveKit room and reads on air. It restarts by itself when connections change or if it stops.</p>
+        </div>
+        <div class="actions"><button class="btn" type="button" id="restart">Restart presenter</button></div>
+      </div>
+      <div class="block">
+        <div class="block-body"><dl class="facts" id="facts"></dl></div>
+      </div>
+      <div class="block">
+        <div class="block-head"><h2>Presenter log</h2><span class="note">Updates every 3 seconds</span></div>
+        <pre class="console" id="wlog">Loading…</pre>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="page" data-page="settings" hidden>
+      <div class="page-head"><div><h1>Settings</h1><p>Change these only if you run several studios or another presenter.</p></div></div>
+      <form class="block" id="adv" autocomplete="off">
+        <div class="block-head"><h2>Presenter and studio</h2></div>
+        <div class="block-body grid2">
+          <div class="field"><label for="o-PRESENTER_NAME">Presenter name</label><input type="text" id="o-PRESENTER_NAME" maxlength="40"><span class="help">Shown to viewers and in this console.</span></div>
+          <div class="field"><label for="o-LANGUAGE">Speech language code</label><input type="text" id="o-LANGUAGE" maxlength="3"><span class="help"><code>ar</code> for Arabic, <code>en</code> for English.</span></div>
+          <div class="field"><label for="o-ROOM_NAME">LiveKit room name</label><input type="text" id="o-ROOM_NAME"><span class="help">One room per studio.</span></div>
+          <div class="field"><label for="o-AGENT_NAME">Agent name</label><input type="text" id="o-AGENT_NAME"><span class="help">Must be unique in your LiveKit project.</span></div>
+        </div>
+        <div class="block-body" style="border-top:1px solid var(--line)"><button class="btn primary" type="submit">Save settings</button></div>
+      </form>
+      <form class="block" id="pwform" autocomplete="off">
+        <div class="block-head"><h2>Admin password</h2></div>
+        <div class="block-body grid2">
+          <div class="field"><label for="pw-cur">Current password</label><input type="password" id="pw-cur" autocomplete="current-password"></div>
+          <div class="field"><label for="pw-new">New password</label><input type="password" id="pw-new" autocomplete="new-password" minlength="10"><span class="help">At least 10 characters.</span></div>
+        </div>
+        <div class="block-body" style="border-top:1px solid var(--line)"><button class="btn primary" type="submit">Change password</button></div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = s => document.querySelector(s)
+const SERVICES = {
+  livekit: { name: 'LiveKit', role: 'Carries the live broadcast to viewers', link: 'https://cloud.livekit.io', where: 'Project → Settings → API keys' },
+  elevenlabs: { name: 'ElevenLabs', role: 'The presenter’s voice', link: 'https://elevenlabs.io/app/settings/api-keys', where: 'Settings → API keys; Voices → voice → ID' },
+  runway: { name: 'Runway', role: 'The presenter’s face (optional; voice only without it)', link: 'https://dev.runwayml.com', where: 'Developer portal → API keys; Characters' }
+}
+const CONTROL = { idle: 'Off air', preparing: 'Preparing', ready: 'Ready to go live', live: 'On air', ended: 'Broadcast ended' }
+const PLAYBACK = { queued: ['Queued', ''], preparing: ['Preparing', 'warn'], ready: ['Ready', 'ok'], on_air: ['On air', 'solid-air'], done: ['Read', ''], blocked: ['Skipped', 'bad'] }
+const APPROVAL = { draft: ['Draft', 'warn'], approved: ['Approved', 'ok'], withdrawn: ['Withdrawn', 'bad'] }
+const PRESENTER = { ready: ['Connected', 'ok'], starting: ['Starting', 'warn'], waiting: ['Waiting for LiveKit keys', 'warn'], crashed: ['Restarting after a stop', 'bad'], stopped: ['Stopped', 'bad'] }
+const SOURCE = { saved: 'Saved here', environment: 'From server environment', missing: 'Not set' }
+
+let S = null, RUN = { control: {}, segments: [], presenter: {} }, LOGS = [], es = null, liveSince = null
+
+// ---------- helpers
+async function call (method, url, body) {
+  const r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined })
+  if (r.status === 401 && !url.endsWith('/login')) { showLogin(); throw new Error('Sign in again.') }
+  const j = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null
+  if (!r.ok) throw new Error(j?.error || r.statusText)
+  return j
+}
+let toastTimer
+function toast (text, bad) { const t = $('#toast'); t.textContent = text; t.className = 'on' + (bad ? ' bad' : ''); clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = '' }, 3200) }
+const run = fn => async (...a) => { try { await fn(...a) } catch (e) { toast(e.message, true) } }
+function pill (text, cls = '') { const s = document.createElement('span'); s.className = 'pill ' + cls; s.textContent = text; return s }
+function show (el, text, cls) { el.hidden = false; el.textContent = text; el.className = 'result ' + cls }
+const secs = ms => ms ? (ms / 1000).toFixed(1) + ' s' : '—'
+
+// ---------- login
+function showLogin () { $('#app').hidden = true; $('#login').hidden = false; if (es) { es.close(); es = null } $('#pw').focus() }
+$('#login-form').onsubmit = async e => {
+  e.preventDefault()
+  try { await call('POST', '/admin/api/login', { password: $('#pw').value }); $('#pw').value = ''; $('#login-msg').hidden = true; await start() }
+  catch (err) { show($('#login-msg'), err.message, 'bad') }
+}
+$('#logout').onclick = async () => { await call('POST', '/admin/api/logout').catch(() => {}); showLogin() }
+
+// ---------- navigation
+function route () {
+  let name = location.hash.slice(1) || (location.pathname === '/studio' ? 'studio' : 'studio')
+  if (!document.querySelector(`[data-page="${name}"]`)) name = 'studio'
+  document.querySelectorAll('[data-page]').forEach(p => { p.hidden = p.dataset.page !== name })
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', a.dataset.section === name ? 'page' : 'false'))
+  if (name === 'presenter') refreshWorker()
+  window.scrollTo(0, 0)
+}
+window.addEventListener('hashchange', route)
+
+// ---------- tally + studio
+function renderTally () {
+  const c = RUN.control, st = c.state || 'idle'
+  if (st === 'live' && !liveSince) liveSince = Date.now()
+  if (st !== 'live') liveSince = null
+  $('#tally').className = 'tally ' + st
+  $('#tally-state').textContent = CONTROL[st] || st
+  const onAir = RUN.segments.find(s => s.playback_state === 'on_air')
+  $('#tally-now').textContent = onAir ? onAir.headline : ''
+  tickTally()
+  const p = PRESENTER[RUN.presenter?.state] || ['Unknown', '']
+  $('#nav-presenter').className = 'dot ' + p[1]
+  $('#nav-studio').className = 'dot ' + (st === 'live' ? 'bad' : st === 'preparing' ? 'warn' : st === 'ready' ? 'ok' : '')
+}
+function tickTally () {
+  const st = RUN.control.state
+  let sub = ''
+  if (st === 'live' && liveSince) { const s = Math.floor((Date.now() - liveSince) / 1000); sub = `On air for ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` }
+  else if (st === 'preparing') sub = 'Preparing the opening audio'
+  else if (st === 'ready') sub = 'Press Go live when you are ready'
+  else if (st === 'ended') sub = RUN.control.note && RUN.control.note.startsWith('failed') ? RUN.control.note : 'Prepare to start again'
+  else sub = 'Presenter: ' + ((PRESENTER[RUN.presenter?.state] || ['…'])[0]).toLowerCase()
+  $('#tally-sub').textContent = sub
+}
+setInterval(tickTally, 1000)
+
+function renderStudio () {
+  const segs = [...RUN.segments].sort((a, b) => a.position - b.position)
+  const st = RUN.control.state || 'idle'
+  const onAir = segs.find(s => s.playback_state === 'on_air')
+  const upcoming = segs.filter(s => s.status === 'approved' && !['done', 'blocked', 'on_air'].includes(s.playback_state))
+  const prep = segs.filter(s => s.playback_state === 'preparing')
+  const setMon = (id, seg, meta, emptyText) => {
+    const t = $(`#m-${id}-title`)
+    t.textContent = seg ? seg.headline : emptyText
+    t.classList.toggle('empty', !seg)
+    $(`#m-${id}-meta`).textContent = seg ? meta : ''
+  }
+  setMon('air', onAir, onAir ? `Story #${onAir.id} · version ${onAir.version}${onAir.kind === 'breaking' ? ' · breaking' : ''}` : '', st === 'live' ? 'Waiting for the next approved story' : 'Nothing on air')
+  $('#m-air').classList.toggle('on', !!onAir)
+  const nx = upcoming[0]
+  setMon('next', nx, nx ? (nx.playback_state === 'ready' ? `Audio ready · ${secs(nx.audio_ms)}` : (PLAYBACK[nx.playback_state] || [''])[0]) : '', 'No approved story waiting')
+  setMon('prep', prep[0], prep.length > 1 ? `and ${prep.length - 1} more` : prep.length ? 'Generating the voice now' : '', 'Idle')
+
+  $('#b-prepare').disabled = ['preparing', 'ready', 'live'].includes(st)
+  $('#b-live').disabled = !['preparing', 'ready'].includes(st)
+  $('#b-end').disabled = !['preparing', 'ready', 'live'].includes(st)
+  $('#b-demo').disabled = ['preparing', 'ready', 'live'].includes(st)
+  $('#b-clear').disabled = st === 'live'
+
+  const waiting = upcoming.length
+  $('#rundown-count').textContent = segs.length ? `${segs.length} ${segs.length === 1 ? 'story' : 'stories'}, ${waiting} approved and waiting` : ''
+  $('#rows-empty').hidden = segs.length > 0
+  const tb = $('#rows'); tb.replaceChildren()
+  for (const s of segs) {
+    const tr = document.createElement('tr')
+    const played = ['done', 'blocked', 'on_air'].includes(s.playback_state)
+    if (['done', 'blocked'].includes(s.playback_state)) tr.className = 'played'
+    if (s.playback_state === 'on_air') tr.className = 'onair'
+    const cells = [
+      () => { const td = document.createElement('td'); td.className = 'num'; td.textContent = s.id; return td },
+      () => { const td = document.createElement('td'); td.className = 'headline ar'; td.dir = 'auto'; td.textContent = s.headline || '(no headline)'; td.title = s.script; return td },
+      () => { const td = document.createElement('td'); td.append(s.kind === 'breaking' ? pill('Breaking', 'bad') : document.createTextNode('Normal')); return td },
+      () => { const td = document.createElement('td'); const a = APPROVAL[s.status]; td.append(pill(a[0], a[1])); return td },
+      () => { const td = document.createElement('td'); td.className = 'num'; td.textContent = 'v' + s.version + (s.prepared_version && s.prepared_version !== s.version ? ` (audio v${s.prepared_version})` : ''); return td },
+      () => { const td = document.createElement('td'); const p = PLAYBACK[s.playback_state]; td.append(pill(p[0], p[1])); return td },
+      () => { const td = document.createElement('td'); td.className = 'num'; td.textContent = secs(s.audio_ms); return td },
+      () => { const td = document.createElement('td'); td.className = 'num'; td.textContent = secs(s.prepare_ms); return td },
+      () => {
+        const td = document.createElement('td'); const box = document.createElement('div'); box.className = 'row-actions'
+        const b = (label, fn, cls = '') => { const x = document.createElement('button'); x.type = 'button'; x.className = 'btn small ' + cls; x.textContent = label; x.onclick = run(fn); box.append(x) }
+        if (!played && s.status !== 'approved') b('Approve', () => call('POST', `/api/v1/segments/${s.id}/approve`))
+        if (!played) b('Edit', async () => edit(s))
+        if (!played && s.status !== 'withdrawn') b('Withdraw', () => call('POST', `/api/v1/segments/${s.id}/withdraw`), 'quiet')
+        if (s.playback_state !== 'on_air' && st !== 'live') b('Delete', async () => { if (confirm(`Delete story #${s.id}?`)) await call('DELETE', `/api/v1/segments/${s.id}`) }, 'quiet')
+        td.append(box); return td
+      }
+    ]
+    for (const c of cells) tr.append(c())
+    tb.append(tr)
+  }
+}
+
+function edit (s) {
+  $('#c-id').value = s.id; $('#c-headline').value = s.headline; $('#c-script').value = s.script
+  $('#c-breaking').checked = s.kind === 'breaking'; $('#c-breaking').disabled = true
+  $('#composer-title').textContent = `Edit story #${s.id}`
+  $('#composer-note').textContent = 'Changing the script makes a new version that needs approval again.'
+  $('#c-save').textContent = 'Save changes'; $('#c-cancel').hidden = false
+  $('#c-headline').focus()
+}
+function resetComposer () {
+  $('#composer').reset(); $('#c-id').value = ''; $('#c-breaking').disabled = false; $('#c-approve').checked = true
+  $('#composer-title').textContent = 'Add a story'; $('#composer-note').textContent = 'The script is read exactly as written.'
+  $('#c-save').textContent = 'Add story'; $('#c-cancel').hidden = true
+}
+$('#c-cancel').onclick = resetComposer
+$('#composer').onsubmit = run(async e => {
+  e.preventDefault()
+  const id = $('#c-id').value, headline = $('#c-headline').value.trim(), script = $('#c-script').value.trim()
+  const approve = $('#c-approve').checked
+  if (id) { await call('PATCH', `/api/v1/segments/${id}`, { headline, script, ...(approve ? { status: 'approved' } : {}) }); toast('Changes saved') }
+  else if ($('#c-breaking').checked) { await call('POST', '/api/v1/breaking', { headline, script }); toast(RUN.control.state === 'live' ? 'Breaking story added. It is read right after the story on air.' : 'Breaking story added') }
+  else { await call('POST', '/api/v1/segments', { headline, script, status: approve ? 'approved' : 'draft' }); toast('Story added') }
+  resetComposer()
+})
+$('#b-prepare').onclick = run(async () => { await call('POST', '/api/v1/broadcast/prepare', {}); toast('The presenter is joining the studio and preparing the opening audio') })
+$('#b-live').onclick = run(async () => { const r = await call('POST', '/api/v1/broadcast/live'); toast(r.state === 'live' ? 'You are on air' : 'Going live as soon as the opening audio is ready') })
+$('#b-end').onclick = run(async () => { if (!confirm('End the broadcast now?')) return; await call('POST', '/api/v1/broadcast/end'); toast('Broadcast ended') })
+$('#b-demo').onclick = run(async () => { await call('POST', '/api/v1/rundown/demo'); toast('Three demo stories loaded') })
+$('#b-clear').onclick = run(async () => { if (!confirm('Remove every story from the rundown?')) return; await call('POST', '/api/v1/rundown/clear'); toast('Rundown cleared') })
+
+const EVENT = { created: 'Story added', edited: 'Story edited', approved: 'Approved', withdrawn: 'Withdrawn', draft: 'Back to draft', deleted: 'Deleted', preparing: 'Preparing audio', ready: 'Audio ready', on_air: 'On air', done: 'Read', blocked: 'Skipped (withdrawn)', queued: 'Moved in the rundown', studio_preparing: 'Studio preparing', studio_ready: 'Studio ready', studio_live: 'Live', studio_ended: 'Broadcast ended', studio_idle: 'Studio idle', rundown_cleared: 'Rundown cleared', demo_reset: 'Demo stories loaded', runway_started: 'Runway face started', runway_failed: 'Runway failed, voice only', voice_only: 'Voice only (no Runway keys)', job_refused: 'Refused a job this server did not ask for' }
+function logText (x) {
+  const seg = x.segment_id ? ` #${x.segment_id}${x.version ? ' v' + x.version : ''}` : ''
+  const d = x.detail || {}
+  const extra = d.error || d.note || d.reason || (d.played_ms ? `played in ${secs(d.played_ms)}` : '') || d.director || ''
+  return (EVENT[x.event] || x.event) + seg + (extra ? ' — ' + extra : '')
+}
+function renderLog () {
+  const box = $('#log'); box.replaceChildren()
+  if (!LOGS.length) { const d = document.createElement('div'); d.textContent = 'Nothing yet.'; d.style.color = 'var(--muted)'; box.append(d); return }
+  for (const x of LOGS.slice(0, 120)) {
+    const row = document.createElement('div'); const t = document.createElement('time'); const s = document.createElement('span')
+    t.textContent = new Date(x.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); s.textContent = logText(x)
+    row.append(t, s); box.append(row)
+  }
+}
+
+// ---------- connections
+function renderServices () {
+  const box = $('#services'); box.replaceChildren()
+  for (const [g, meta] of Object.entries(SERVICES)) {
+    const ready = S.status.services[g]
+    const block = document.createElement('div'); block.className = 'block'
+    block.innerHTML = `<div class="block-head"><div><h2></h2><span class="note"></span></div><span class="svc-status"></span></div>
+      <div class="block-body"><div class="grid2"></div>
+      <div class="svc-foot"><button class="btn" type="button" data-test="${g}">Test connection</button>${g === 'elevenlabs' ? '<button class="btn" type="button" id="sample">Play a voice sample</button>' : ''}<span class="src"><a target="_blank" rel="noopener"></a></span></div>
+      <div class="result" id="res-${g}" hidden></div>${g === 'elevenlabs' ? '<audio id="sample-audio" controls hidden style="width:100%;margin-top:12px"></audio>' : ''}</div>`
+    block.querySelector('h2').textContent = meta.name
+    block.querySelector('.note').textContent = ' ' + meta.role
+    block.querySelector('.svc-status').append(ready ? pill('Connected', 'ok') : pill(g === 'runway' ? 'Not set · voice only' : 'Not set', g === 'runway' ? 'warn' : 'bad'))
+    const a = block.querySelector('.src a'); a.href = meta.link; a.textContent = `Where to find these: ${meta.where}`
+    const grid = block.querySelector('.grid2')
+    for (const f of S.fields.filter(x => x.group === g)) {
+      const fd = document.createElement('div'); fd.className = 'field'
+      fd.innerHTML = `<label></label><input autocomplete="off" spellcheck="false"><div class="meta"><span></span></div>`
+      const input = fd.querySelector('input')
+      input.id = 'f-' + f.key; input.type = f.secret ? 'password' : 'text'; input.className = 'code'
+      fd.querySelector('label').textContent = f.label; fd.querySelector('label').htmlFor = input.id
+      input.placeholder = f.secret ? (f.hint ? `Set (ends ${f.hint.slice(-4)}). Paste to replace` : 'Paste the key') : (f.placeholder || '')
+      if (!f.secret) input.value = f.value || ''
+      fd.querySelector('.meta span').textContent = SOURCE[f.source] + (f.hint ? ` · ends ${f.hint.slice(-4)}` : '')
+      if (f.source === 'saved') {
+        const rm = document.createElement('button'); rm.type = 'button'; rm.textContent = 'Remove'
+        rm.onclick = run(async () => { if (!confirm(`Remove the saved ${meta.name} ${f.label.toLowerCase()}?`)) return; await saveKeys({ [f.key]: null }) })
+        fd.querySelector('.meta').append(rm)
+      }
+      grid.append(fd)
+      if (f.key === 'RUNWAY_AVATAR_ID') {
+        const t = document.createElement('div'); t.className = 'field'
+        t.innerHTML = '<label for="o-RUNWAY_AVATAR_TYPE">Character type</label><select id="o-RUNWAY_AVATAR_TYPE"><option value="custom">My own character (avatar ID)</option><option value="preset">A Runway preset</option></select>'
+        t.querySelector('select').value = S.options.RUNWAY_AVATAR_TYPE
+        grid.append(t)
+      }
+    }
+    box.append(block)
+  }
+  box.querySelectorAll('[data-test]').forEach(b => { b.onclick = () => test(b.dataset.test, b) })
+  $('#sample').onclick = sample
+}
+function formValues () {
+  const v = {}
+  for (const f of S.fields) { const x = $('#f-' + f.key).value.trim(); if (x) v[f.key] = x }
+  v.RUNWAY_AVATAR_TYPE = $('#o-RUNWAY_AVATAR_TYPE').value
+  return v
+}
+async function test (g, btn) {
+  btn.disabled = true; show($('#res-' + g), 'Testing…', 'busy')
+  try { const r = await call('POST', '/admin/api/test/' + g, { values: formValues() }); show($('#res-' + g), r.message, r.ok === true ? 'ok' : r.ok === false ? 'bad' : 'warn') }
+  catch (e) { show($('#res-' + g), e.message, 'bad') }
+  btn.disabled = false
+}
+async function sample () {
+  const b = $('#sample'); b.disabled = true; show($('#res-elevenlabs'), 'Generating a short sample. This uses a few ElevenLabs credits.', 'busy')
+  try {
+    const r = await fetch('/admin/api/sample', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ values: formValues() }) })
+    if (!r.ok) throw new Error((await r.json()).error)
+    const a = $('#sample-audio'); a.src = URL.createObjectURL(await r.blob()); a.hidden = false; a.play()
+    show($('#res-elevenlabs'), `Sample ready in ${secs(Number(r.headers.get('x-prepare-ms')))}. This is the voice viewers will hear.`, 'ok')
+  } catch (e) { show($('#res-elevenlabs'), e.message, 'bad') }
+  b.disabled = false
+}
+async function saveKeys (values) {
+  const r = await call('PUT', '/admin/api/settings', { values, options: { RUNWAY_AVATAR_TYPE: $('#o-RUNWAY_AVATAR_TYPE').value } })
+  toast(r.changed.length ? `Connections saved. Presenter: ${r.presenter}.` : 'Nothing changed')
+  await loadSettings()
+}
+$('#keys').onsubmit = run(async e => { e.preventDefault(); const v = formValues(); delete v.RUNWAY_AVATAR_TYPE; await saveKeys(v) })
+
+// ---------- website & api
+function renderWebsite () {
+  const base = location.origin
+  $('#api-base').value = base + '/api/v1'
+  $('#api-key').value = S.apiKey
+  $('#origins').value = S.options.ALLOWED_ORIGINS || ''
+  $('#wh-url').value = S.options.WEBHOOK_URL || ''
+  $('#wh-secret').value = S.webhookSecret
+  const w = S.webhook
+  $('#wh-stats').textContent = w && w.sent ? `${w.sent} sent, ${w.failed} failed` + (w.last ? `; last: ${w.last.event} → ${w.last.status || w.last.error}` : '') : ''
+  $('#embed').textContent = `<iframe src="${base}/watch?embed=1" allow="autoplay"\n        style="width:100%;aspect-ratio:16/9;border:0"></iframe>`
+  $('#snippets').textContent =
+`# Send an approved story (read word for word)
+curl -X POST ${base}/api/v1/segments \\
+  -H "x-api-key: $ZAID_KEY" -H "content-type: application/json" \\
+  -d '{"headline":"...","script":"...","approved":true,"externalId":"story-123"}'
+
+# Start: prepares the opening audio, then goes live by itself
+curl -X POST ${base}/api/v1/broadcast/start -H "x-api-key: $ZAID_KEY"
+
+# Breaking news while live: read right after the story on air
+curl -X POST ${base}/api/v1/breaking \\
+  -H "x-api-key: $ZAID_KEY" -H "content-type: application/json" \\
+  -d '{"headline":"...","script":"..."}'
+
+# End
+curl -X POST ${base}/api/v1/broadcast/end -H "x-api-key: $ZAID_KEY"`
+}
+const toggle = (input, btn) => { input.type = input.type === 'password' ? 'text' : 'password'; btn.textContent = input.type === 'password' ? 'Show' : 'Hide' }
+const copy = async (text, label) => { await navigator.clipboard.writeText(text); toast(label + ' copied') }
+$('#key-show').onclick = () => toggle($('#api-key'), $('#key-show'))
+$('#key-copy').onclick = run(() => copy(S.apiKey, 'API key'))
+$('#key-rotate').onclick = run(async () => { if (!confirm('Replace the API key? The old key stops working at once, so update your backend right after.')) return; S.apiKey = (await call('POST', '/admin/api/api-key')).apiKey; renderWebsite(); toast('New API key made') })
+$('#origins-save').onclick = run(async () => { await call('PUT', '/admin/api/settings', { options: { ALLOWED_ORIGINS: $('#origins').value } }); toast('Website addresses saved'); await loadSettings() })
+$('#embed-copy').onclick = run(() => copy($('#embed').textContent, 'Embed code'))
+$('#wh-show').onclick = () => toggle($('#wh-secret'), $('#wh-show'))
+$('#wh-copy').onclick = run(() => copy(S.webhookSecret, 'Signing secret'))
+$('#wh-rotate').onclick = run(async () => { if (!confirm('Replace the signing secret? Your receiver must use the new one.')) return; S.webhookSecret = (await call('POST', '/admin/api/webhook-secret')).webhookSecret; renderWebsite(); toast('New signing secret made') })
+$('#wh-save').onclick = run(async () => { await call('PUT', '/admin/api/settings', { options: { WEBHOOK_URL: $('#wh-url').value } }); toast($('#wh-url').value ? 'Webhook saved' : 'Webhook turned off'); await loadSettings() })
+$('#wh-test').onclick = run(async () => {
+  show($('#wh-result'), 'Sending…', 'busy')
+  try {
+    const r = await call('POST', '/admin/api/webhook/test', { url: $('#wh-url').value })
+    if (r.error) show($('#wh-result'), `Could not reach it: ${r.error}`, 'bad')
+    else show($('#wh-result'), `Your endpoint answered ${r.status} in ${r.ms} ms.`, r.status < 300 ? 'ok' : 'warn')
+  } catch (e) { show($('#wh-result'), e.message, 'bad') }
+})
+
+// ---------- presenter
+async function refreshWorker () {
+  if ($('[data-page="presenter"]').hidden) return
+  try {
+    const l = await call('GET', '/admin/api/worker/logs')
+    const p = PRESENTER[l.status.state] || [l.status.state, '']
+    const dl = $('#facts'); dl.replaceChildren()
+    const row = (k, v) => { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); typeof v === 'string' ? dd.textContent = v : dd.append(v); dl.append(dt, dd) }
+    row('State', pill(p[0], p[1]))
+    if (l.status.reason) row('Details', l.status.reason)
+    row('Since', new Date(l.status.since).toLocaleString())
+    row('Presenter name', S.options.PRESENTER_NAME)
+    row('LiveKit room', S.options.ROOM_NAME)
+    row('Agent name', S.options.AGENT_NAME)
+    row('Face', S.status.services.runway ? 'Runway character' : 'None (voice only)')
+    const pre = $('#wlog'); const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 10
+    pre.textContent = l.lines.join('\n') || 'No output yet.'
+    if (atEnd) pre.scrollTop = pre.scrollHeight
+  } catch {}
+}
+setInterval(refreshWorker, 3000)
+$('#restart').onclick = run(async () => { await call('POST', '/admin/api/worker/restart'); toast('Presenter restarting'); setTimeout(refreshWorker, 1200) })
+
+// ---------- settings
+function renderSettings () { for (const k of ['PRESENTER_NAME', 'LANGUAGE', 'ROOM_NAME', 'AGENT_NAME']) $('#o-' + k).value = S.options[k] }
+$('#adv').onsubmit = run(async e => {
+  e.preventDefault()
+  const options = Object.fromEntries(['PRESENTER_NAME', 'LANGUAGE', 'ROOM_NAME', 'AGENT_NAME'].map(k => [k, $('#o-' + k).value]))
+  const r = await call('PUT', '/admin/api/settings', { options })
+  toast(r.changed.length ? `Settings saved. Presenter: ${r.presenter}.` : 'Nothing changed')
+  await loadSettings()
+})
+$('#pwform').onsubmit = run(async e => {
+  e.preventDefault()
+  const r = await call('POST', '/admin/api/password', { current: $('#pw-cur').value, next: $('#pw-new').value })
+  $('#pw-cur').value = $('#pw-new').value = ''; toast(r.note)
+})
+
+// ---------- data
+async function loadSettings () {
+  S = await call('GET', '/admin/api/settings')
+  $('#brand-name').textContent = S.options.PRESENTER_NAME
+  document.title = `${S.options.PRESENTER_NAME} · Broadcast console`
+  const sv = S.status.services
+  $('#nav-connections').className = 'dot ' + (sv.livekit && sv.elevenlabs ? 'ok' : 'bad')
+  renderServices(); renderWebsite(); renderSettings()
+}
+function connect () {
+  if (es) es.close()
+  es = new EventSource('/api/v1/events')
+  es.addEventListener('rundown', e => { RUN = JSON.parse(e.data); renderTally(); renderStudio() })
+  es.addEventListener('log', e => { LOGS.unshift(JSON.parse(e.data)); renderLog() })
+  es.onerror = () => { call('GET', '/api/v1/status').catch(() => {}) }
+}
+async function start () {
+  await loadSettings()
+  $('#login').hidden = true; $('#app').hidden = false
+  route()
+  LOGS = await call('GET', '/api/v1/log?limit=120'); renderLog()
+  connect()
+}
+start().catch(() => showLogin())
+</script>
+</body>
+</html>

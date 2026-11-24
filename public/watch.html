@@ -1,84 +1,104 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>زيد — البث المباشر</title>
+<title>Live news</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#111; --muted:#6b6b6b; --bg:#0d0f12; --accent:#b3261e; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:'Almarai',system-ui,sans-serif; background:var(--bg); color:#fff; min-height:100vh; display:flex; flex-direction:column; }
-  header { display:flex; align-items:center; gap:14px; padding:12px 20px; background:#000; }
-  header h1 { font-size:17px; margin:0; }
-  #live { background:var(--accent); font-size:12px; padding:3px 8px; visibility:hidden; }
-  #live.on { visibility:visible; }
-  #status { margin-inline-start:auto; font-size:13px; color:#aaa; }
-  main { flex:1; position:relative; display:flex; align-items:center; justify-content:center; }
-  video { width:100%; height:100%; max-height:calc(100vh - 48px); object-fit:contain; background:#000; }
-  #placeholder { text-align:center; color:#aaa; }
-  #placeholder b { display:block; font-size:42px; color:#fff; margin-bottom:8px; }
-  #lower { position:absolute; left:0; right:0; bottom:0; padding:0 0 18px; display:none; }
-  #lower.on { display:block; }
-  #headline { display:inline-block; background:var(--accent); font-weight:700; font-size:20px; padding:8px 22px; margin-inline-start:24px; }
-  #headline.breaking::before { content:'عاجل · '; }
-  #caption { background:rgba(0,0,0,.78); font-size:20px; line-height:1.8; padding:10px 24px; }
-  #start { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.6); }
-  body.embed header { display:none; }
-  body.embed video { max-height:100vh; }
-  button { font:inherit; font-size:17px; padding:12px 28px; border:0; background:#fff; color:#111; cursor:pointer; }
+:root { --stage: #10161D; --ink: #F4F6F8; --muted: #9AA6B2; --air: #D42B2B; --signal: #1F5FD1; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; }
+body { font: 15px/1.5 'IBM Plex Sans', system-ui, sans-serif; background: var(--stage); color: var(--ink); display: flex; flex-direction: column; }
+.ar { font-family: 'IBM Plex Sans Arabic', 'IBM Plex Sans', system-ui, sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid #222C36; }
+header b { font-weight: 600; }
+#live { display: none; align-items: center; gap: 6px; background: var(--air); color: #fff; font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 4px; }
+#live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+#live.on { display: inline-flex; }
+#status { margin-left: auto; font-size: 14px; color: var(--muted); }
+body.embed header { display: none; }
+.stage { flex: 1; position: relative; display: grid; place-items: center; overflow: hidden; min-height: 240px; }
+video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+#placeholder { text-align: center; color: var(--muted); padding: 20px; }
+#placeholder b { display: block; color: var(--ink); font-size: clamp(28px, 5vw, 46px); font-weight: 600; margin-bottom: 6px; }
+.lower { position: absolute; left: 0; right: 0; bottom: 0; display: none; }
+.lower.on { display: block; }
+#headline { display: inline-block; margin: 0 24px; background: var(--air); color: #fff; font-weight: 600; font-size: clamp(16px, 2.2vw, 22px); padding: 8px 20px; border-radius: 4px 4px 0 0; }
+#caption { background: rgba(10, 14, 19, .86); font-size: clamp(16px, 2vw, 21px); line-height: 1.85; padding: 12px 24px 16px; }
+#start { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 14, 19, .72); }
+#start div { text-align: center; display: grid; gap: 12px; justify-items: center; padding: 20px; }
+#start p { margin: 0; color: var(--muted); }
+button { font: inherit; font-weight: 600; font-size: 16px; padding: 12px 26px; border: 0; border-radius: 6px; background: var(--signal); color: #fff; cursor: pointer; }
+button:hover { background: #184EAE; }
+button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.25.0/dist/livekit-client.umd.min.js"></script>
 </head>
 <body>
 <header>
-  <h1>زيد — نشرة الأخبار</h1>
-  <span id="live">مباشر</span>
-  <span id="status">…</span>
+  <b id="name">Live news</b>
+  <span id="live">LIVE</span>
+  <span id="status">Connecting…</span>
 </header>
-<main>
+<div class="stage">
   <video id="video" autoplay playsinline hidden></video>
-  <div id="placeholder"><b>زيد</b>بانتظار بدء البث</div>
-  <div id="lower"><div id="headline"></div><div id="caption"></div></div>
-  <div id="start"><button id="join">شاهد البث</button></div>
-</main>
+  <div id="placeholder"><b id="ph-name">Live news</b><span id="ph-text">Waiting for the broadcast to start</span></div>
+  <div class="lower" id="lower" dir="auto"><div id="headline" class="ar" dir="auto"></div><div id="caption" class="ar" dir="auto"></div></div>
+  <div id="start"><div><button id="join" type="button">Watch live</button><p>Sound starts after you click.</p></div></div>
+</div>
 <script>
 const $ = id => document.getElementById(id)
 const { Room, RoomEvent, Track } = LivekitClient
 let room, joining = false
 if (new URLSearchParams(location.search).has('embed')) document.body.classList.add('embed')
+
+const STATE = { live: 'On air now', preparing: 'Starting soon', ready: 'Starting soon', ended: 'The last broadcast has ended', idle: 'No broadcast right now' }
 fetch('/api/public/status').then(r => r.json()).then(s => {
-  $('status').textContent = s.state === 'live' ? 'البث شغّال' : s.state === 'ended' ? 'انتهى آخر بث' : 'لا يوجد بث الآن'
-}).catch(() => {})
+  const name = s.presenterName || 'Live news'
+  $('name').textContent = name; $('ph-name').textContent = name; document.title = `${name} · Live news`
+  $('status').textContent = STATE[s.state] || ''
+  $('live').classList.toggle('on', s.state === 'live')
+  if (s.state === 'live') $('ph-text').textContent = s.face ? 'On air now' : 'On air now (voice only)'
+}).catch(() => { $('status').textContent = '' })
 
 $('join').onclick = async () => {
   if (joining) return
   joining = true
-  $('start').style.display = 'none'
+  $('start').hidden = true
+  $('status').textContent = 'Connecting…'
   const r = await fetch('/api/public/viewer-token')
   const j = await r.json()
-  if (!r.ok) { $('status').textContent = j.error; joining = false; $('start').style.display = ''; return }
+  if (!r.ok) { $('status').textContent = j.error; joining = false; $('start').hidden = false; return }
   room = new Room({ adaptiveStream: true })
-  room.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
-    if (track.kind === Track.Kind.Video) { track.attach($('video')); $('video').hidden = false; $('placeholder').style.display = 'none' }
-    if (track.kind === Track.Kind.Audio) { const el = track.attach(); document.body.appendChild(el) }
+  room.on(RoomEvent.TrackSubscribed, track => {
+    if (track.kind === Track.Kind.Video) { track.attach($('video')); $('video').hidden = false; $('placeholder').hidden = true }
+    if (track.kind === Track.Kind.Audio) document.body.appendChild(track.attach())
   })
-  room.on(RoomEvent.TrackUnsubscribed, track => { if (track.kind === Track.Kind.Video) { $('video').hidden = true; $('placeholder').style.display = '' } track.detach().forEach(el => { if (el.tagName === 'AUDIO') el.remove() }) })
+  room.on(RoomEvent.TrackUnsubscribed, track => {
+    if (track.kind === Track.Kind.Video) { $('video').hidden = true; $('placeholder').hidden = false }
+    track.detach().forEach(el => { if (el.tagName === 'AUDIO') el.remove() })
+  })
   room.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
     if (topic !== 'zaid') return
     const e = JSON.parse(new TextDecoder().decode(payload))
     if (e.type === 'segment') {
-      $('lower').classList.add('on'); $('live').classList.add('on')
-      $('headline').textContent = e.headline; $('headline').className = e.kind === 'breaking' ? 'breaking' : ''
+      $('lower').classList.add('on'); $('live').classList.add('on'); $('status').textContent = STATE.live
+      const rtl = /[֐-ࣿ]/.test(e.script) // Hebrew/Arabic script → right to left
+      $('lower').dir = rtl ? 'rtl' : 'ltr'
+      $('headline').textContent = (e.kind === 'breaking' ? (rtl ? 'عاجل · ' : 'Breaking · ') : '') + e.headline
       $('caption').textContent = e.script
+      $('ph-text').textContent = 'Voice only'
     }
-    if (e.type === 'end') { $('lower').classList.remove('on'); $('live').classList.remove('on'); $('placeholder').innerHTML = '<b>زيد</b>انتهى البث' }
+    if (e.type === 'end') { $('lower').classList.remove('on'); $('live').classList.remove('on'); $('status').textContent = STATE.ended; $('ph-text').textContent = 'The broadcast has ended' }
   })
-  room.on(RoomEvent.Disconnected, () => { $('status').textContent = 'انقطع الاتصال'; joining = false; $('start').style.display = '' })
+  room.on(RoomEvent.Disconnected, () => { joining = false; $('start').hidden = false; $('live').classList.remove('on') })
   await room.connect(j.url, j.token)
   await room.startAudio()
-  $('status').textContent = 'متصل'
+  $('status').textContent = 'Connected. Waiting for the next story'
 }
 </script>
 </body>

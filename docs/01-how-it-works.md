@@ -5,7 +5,7 @@
 | Part | Role | Runs where |
 |---|---|---|
 | **Your newsroom** (backend + editors) | Writes, checks and approves stories. Owns the wording | Your servers |
-| **Zaid backend** (this repo) | Keeps the rundown, runs the presenter, gives you an API and an admin page | One always-on server (yours) |
+| **Zaid backend** (this repo) | Keeps the rundown, runs the presenter, gives you an API, a web console and an event webhook | One always-on server (yours) |
 | **Zaid, the presenter** | A LiveKit Agent: joins the studio room, reads approved segments in order, handles breaking news | Inside the Zaid backend (child process) |
 | **ElevenLabs** | Zaid's voice: turns each approved script into audio (`eleven_v4_turbo`) | ElevenLabs cloud |
 | **Runway** | Zaid's face: a Runway Character that lip-syncs to Zaid's audio and publishes video | Runway cloud |
@@ -42,7 +42,8 @@ text and his voice. The script is spoken exactly as approved, so the newsroom st
    State: `preparing`, then `ready`. With `start`, the show goes live as soon as the opening audio is ready.
 4. **On air.** For each segment, at the boundary, Zaid checks one last time that it is still approved and still the
    same version, then plays its audio into the room and sends the headline and script as a data message (for captions).
-   Runway receives the same audio and returns the face, lip-synced.
+   Runway receives the same audio and returns the face, lip-synced. In voice-only mode Zaid publishes his own audio
+   track, which plays on schedule even when no viewer is connected yet.
 5. **Meanwhile.** Every 0.8 s the director checks the rundown: blocks withdrawn segments, moves approved breaking news
    right after the segment on air, and prepares the next two segments' audio.
 6. **End.** `POST /broadcast/end`. Zaid finishes, closes the Runway session and leaves; the room closes.
@@ -62,9 +63,9 @@ text and his voice. The script is spoken exactly as approved, so the newsroom st
 
 | File | Job |
 |---|---|
-| `server.js` | HTTP server: `/admin`, `/studio`, `/watch`, `/api/v1`, `/api/public`, live events; starts and restarts the presenter |
+| `server.js` | HTTP server: console (`/admin`, `/studio`), `/watch`, `/api/v1`, `/api/public`, live events, webhook; starts and restarts the presenter |
 | `agent.js` | The presenter (LiveKit Agents for Node). Starts Runway if configured, then runs the rundown |
 | `lib/rundown.js` | Director rules and the on-air loop |
 | `lib/tts.js` | ElevenLabs `eleven_v4_turbo` over the Text to Dialogue WebSocket |
 | `lib/store.js` | Rundown, studio state and log, saved in `data/state.json` |
-| `lib/config.js` | Keys and options from the admin page (`data/settings.json`) |
+| `lib/config.js` | Keys and options from the console (`data/settings.json`) |

@@ -24,39 +24,39 @@ Without `ADMIN_PASSWORD`, the first start prints a random password in the consol
 Put HTTPS in front (for example Caddy: `zaid.example.com { reverse_proxy localhost:8080 }`).
 Check it is up: `GET https://zaid.example.com/health` → `{"ok":true}`.
 
-## B. Fill the admin page
+## B. Fill the console
 
-Open `https://zaid.example.com/admin` and sign in.
+Open `https://zaid.example.com/admin`, sign in, and go to **Connections**.
 
-1. **LiveKit**: Server URL, API key, API secret → **Test** → "Connected".
-2. **ElevenLabs**: API key, voice ID → **Test** → "Voice found: …" → **Play sample** to hear the exact voice
+1. **LiveKit**: Server URL, API key, API secret → **Test connection** → "Connected".
+2. **ElevenLabs**: API key, voice ID → **Test connection** → "Voice found: …" → **Play a voice sample** to hear the exact voice
    (costs a few credits).
-3. **Runway** (optional): API secret, character ID, and the type (custom character or preset) → **Test** → shows
+3. **Runway** (optional): API secret, character ID, and the character type (your own or a Runway preset) → **Test connection** → shows
    the credit balance and finds the character.
-4. **Save**. The presenter restarts with the new keys. Wait until the header shows
-   **"Presenter: connected to LiveKit"**.
-5. **Connect your website**: copy the **API key** into your backend's secrets, and add your website's origin(s) under
-   "Allowed website origins" (for example `https://news.example.com`) → **Save origins**.
-6. **Admin password**: change it to your own.
+4. **Save connections**. The presenter restarts with the new keys. Wait until the sidebar shows
+   **"Presenter: connected"**.
+5. **Website & API**: copy the **API key** into your backend's secrets, and add your website's address(es) under
+   "Allowed website addresses" (for example `https://news.example.com`) → **Save**. Optionally set the **Event webhook**.
+6. **Settings → Admin password**: change it to your own. Set the presenter name there too.
 
 Keys are stored only on this server and never shown again (only the last 4 characters). A key typed on the
-admin page wins over the same name in the environment. To set keys from your container's secrets instead, use the
+console wins over the same name in the environment. To set keys from your container's secrets instead, use the
 variables listed in the main README.
 
 ## C. First test (5 minutes)
 
-1. Open `/studio` → «ديمو (3 أخبار)» (loads 3 approved demo segments).
-2. «تجهيز الاستوديو» (prepare). The state goes `يجهّز` → `جاهز للبث` in a few seconds.
-3. Open `/watch` in another tab and click «شاهد البث».
-4. «على الهواء» (go live). Zaid reads the three segments.
-5. While segment 2 plays, add a story in the form with «خبر عاجل» ticked. It plays right after segment 2.
-6. «إنهاء البث» (end).
+1. Console → **Studio** → **Load demo stories** (3 approved demo stories).
+2. **Prepare**. The light in the sidebar goes from amber "Preparing" to green "Ready to go live" in a few seconds.
+3. Open `/watch` in another tab and click **Watch live**.
+4. **Go live**. The light turns red with a timer; Zaid reads the three stories.
+5. While story 2 plays, add a story with **Breaking news** ticked. It plays right after story 2.
+6. **End broadcast**.
 
-The studio log and the admin page's presenter log show every step (`preparing`, `ready`, `on_air`, `done`,
+The Studio's **Activity** list and the **Presenter** log show every step (`preparing`, `ready`, `on_air`, `done`,
 `runway_started` or `runway_failed` with Runway's error text).
 
 ## D. Several studios or environments
 
 One backend = one studio = one LiveKit room. For staging + production, or several channels, run one backend each
-with a different **room name** and **agent name** (admin page → Advanced). Two backends with the same agent name on
+with a different **room name** and **agent name** (console → Settings). Two backends with the same agent name on
 the same LiveKit project would steal each other's jobs.

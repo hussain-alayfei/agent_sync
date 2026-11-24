@@ -40,6 +40,7 @@ function workerEnv () {
     RUNWAY_AVATAR_TYPE: config.get('RUNWAY_AVATAR_TYPE'),
     ZAID_AGENT_NAME: config.get('AGENT_NAME'),
     ZAID_LANGUAGE: config.get('LANGUAGE'),
+    ZAID_PRESENTER_NAME: config.get('PRESENTER_NAME'),
     ZAID_INTERNAL_URL: `http://127.0.0.1:${PORT}`,
     ZAID_INTERNAL_TOKEN: INTERNAL_TOKEN
   })
@@ -173,13 +174,14 @@ async function viewerToken () {
 function publicStatus () {
   const c = store.control()
   const onAir = c.on_air_id ? store.segment(c.on_air_id) : null
-  return { state: c.state, onAir: onAir ? { id: onAir.id, headline: onAir.headline, kind: onAir.kind } : null, face: config.ready.runway() }
+  return { state: c.state, presenterName: config.get('PRESENTER_NAME'), onAir: onAir ? { id: onAir.id, headline: onAir.headline, kind: onAir.kind } : null, face: config.ready.runway() }
 }
 
 function status () {
   const segs = store.segments()
   return {
     control: store.control(),
+    presenterName: config.get('PRESENTER_NAME'),
     onAir: publicStatus().onAir,
     services: { livekit: config.ready.livekit(), elevenlabs: config.ready.elevenlabs(), runway: config.ready.runway() },
     presenter: worker.status(),
@@ -205,6 +207,41 @@ function pushRundown () {
 store.on('change', pushRundown)
 store.on('log', entry => { const d = `event: log\ndata: ${JSON.stringify(entry)}\n\n`; for (const res of streams) res.write(d) })
 setInterval(() => { for (const res of streams) res.write(': ping\n\n') }, 25_000)
+
+// ---------------------------------------------------------------- webhook relay
+// Every log event is also POSTed to WEBHOOK_URL (if set), signed with HMAC-SHA256, so another system
+// (your backend, a Supabase Edge Function, a queue) can relay it to its own real-time channel.
+const webhookStats = { sent: 0, failed: 0, last: null }
+const WEBHOOK_OK = /^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/
+async function sendWebhook (entry, url = config.get('WEBHOOK_URL')) {
+  if (!url) return null
+  const seg = entry.segment_id ? store.segment(entry.segment_id) : null
+  const body = JSON.stringify({
+    event: entry.event,
+    at: entry.at,
+    detail: entry.detail,
+    segment: seg ? { id: seg.id, external_id: seg.external_id, headline: seg.headline, kind: seg.kind, status: seg.status, version: seg.version, playback_state: seg.playback_state } : null,
+    control: store.control()
+  })
+  const sig = 'sha256=' + crypto.createHmac('sha256', config.webhookSecret()).update(body).digest('hex')
+  const t0 = Date.now()
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-zaid-event': entry.event, 'x-zaid-signature': sig },
+      body,
+      signal: AbortSignal.timeout(5000)
+    })
+    webhookStats.sent++
+    if (!r.ok) webhookStats.failed++
+    webhookStats.last = { at: new Date().toISOString(), event: entry.event, status: r.status, ms: Date.now() - t0 }
+  } catch (e) {
+    webhookStats.failed++
+    webhookStats.last = { at: new Date().toISOString(), event: entry.event, error: e.message }
+  }
+  return webhookStats.last
+}
+store.on('log', entry => { sendWebhook(entry) })
 let lastWorkerState = ''
 setInterval(() => { const s = worker.status().state; if (s !== lastWorkerState) { lastWorkerState = s; pushRundown() } }, 1000)
 
@@ -274,7 +311,7 @@ async function admin (req, res, url, parts) {
     return send(res, 200, { ok: true }, { 'set-cookie': 'zaid_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' })
   }
   if (a === 'settings' && m === 'GET') {
-    return send(res, 200, { ...config.describe(), apiKey: config.apiKey(), presenter: worker.status(), status: status(), restartPending: restartAfterBroadcast, firstPasswordFile: firstPassword ? 'data/admin-password.txt' : null })
+    return send(res, 200, { ...config.describe(), apiKey: config.apiKey(), webhookSecret: config.webhookSecret(), webhook: webhookStats, presenter: worker.status(), status: status(), restartPending: restartAfterBroadcast, firstPasswordFile: firstPassword ? 'data/admin-password.txt' : null })
   }
   if (a === 'settings' && m === 'PUT') {
     const changed = config.save(await readJson(req))
@@ -300,6 +337,14 @@ async function admin (req, res, url, parts) {
     } catch (e) { return send(res, 400, { error: e.message }) }
   }
   if (a === 'api-key' && m === 'POST') return send(res, 200, { apiKey: config.rotateApiKey() })
+  if (a === 'webhook-secret' && m === 'POST') return send(res, 200, { webhookSecret: config.rotateWebhookSecret() })
+  if (a === 'webhook' && b === 'test' && m === 'POST') {
+    const { url } = await readJson(req, 4096)
+    const target = (typeof url === 'string' && url.trim()) || config.get('WEBHOOK_URL')
+    if (!target) return send(res, 400, { error: 'Enter a webhook URL first.' })
+    if (!WEBHOOK_OK.test(target)) return send(res, 400, { error: 'The URL must start with https:// (http:// only for localhost).' })
+    return send(res, 200, await sendWebhook({ event: 'test', at: new Date().toISOString(), segment_id: null, detail: { note: 'test from the admin page' } }, target))
+  }
   if (a === 'password' && m === 'POST') {
     const { current, next } = await readJson(req, 4096)
     if (!config.checkPassword(current)) return send(res, 401, { error: 'The current password is wrong.' })
@@ -332,7 +377,7 @@ async function internal (req, res, parts) {
 }
 
 // ---------------------------------------------------------------- pages
-const PAGES = { '/admin': 'admin.html', '/studio': 'studio.html', '/watch': 'watch.html' }
+const PAGES = { '/admin': 'console.html', '/studio': 'console.html', '/watch': 'watch.html' }
 async function page (req, res, pathname) {
   const frame = pathname === '/watch' ? `'self' ${config.allowedOrigins().join(' ')}`.trim() : "'none'"
   res.writeHead(200, {

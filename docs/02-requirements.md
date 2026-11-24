@@ -1,6 +1,6 @@
 # 2. Requirements
 
-## Accounts and keys (7 values on the admin page)
+## Accounts and keys (7 values on the console → Connections)
 
 | Service | Values | Where to get them | Notes |
 |---|---|---|---|
@@ -9,7 +9,7 @@
 | **Runway** (optional) | API secret, character (avatar) ID | [dev.runwayml.com](https://dev.runwayml.com) → API keys; Characters | Needs **API credits** (separate from a Runway app subscription). A custom character ID or a Runway preset. Without Runway, Zaid broadcasts voice only |
 
 Choosing Zaid's voice: design or pick an Arabic male voice in ElevenLabs (Voice Design or the Voice Library added to
-your account), check it with **Play sample** on the admin page, then save its ID.
+your account), check it with **Play a voice sample** on the console, then save its ID.
 
 ## Server
 
@@ -40,7 +40,7 @@ through LiveKit's TCP/TLS fallback, with a little more delay.
 | Who | Needs |
 |---|---|
 | Your backend | Store the Zaid API key as a secret; call `/api/v1` server to server (never from the browser) |
-| Your website | Your origin added to "Allowed website origins" on the admin page; one click from the viewer before sound can play (browser rule) |
+| Your website | Your origin added to "Allowed website addresses" on the console; one click from the viewer before sound can play (browser rule) |
 | Your editors | Final scripts written to be **read aloud**: numbers as words, diacritics on names that can be read two ways, one idea per segment |
 
 ## Costs (to check against each provider's current price list)

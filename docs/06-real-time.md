@@ -20,6 +20,8 @@ approve ─► (API, ms) ─► rundown ─► director tick (≤ 0.8 s) ─► 
 | ElevenLabs `eleven_v4_turbo`, one segment of 75–110 characters (5–10 s of audio) | 1.1–1.9 s to prepare |
 | `prepare` → studio ready (opening audio done) | ≈ 4 s |
 | Gap between two segments | ≈ 0.2–0.4 s |
+| A full 3-story show with **no viewer connected** (start → last story read) | 37 s for 26.6 s of audio |
+| Webhook delivery to a local receiver | 15–20 ms per event |
 | Breaking news approved during a segment | read right after that segment; ≈ 1–1.5 s extra gap if its audio was not ready yet |
 | Viewer audio delay (WebRTC) | not measured; WebRTC is usually well under a second |
 | Runway face (start time, video delay, Arabic lip sync) | **not measured yet** (no Runway credits during the test) |
@@ -56,6 +58,6 @@ approve ─► (API, ms) ─► rundown ─► director tick (≤ 0.8 s) ─► 
 
 ## Measure it yourself
 
-- Studio table: «طول الصوت» (audio length) and «وقت التجهيز» (prepare time) per segment.
+- Studio rundown: **Audio** (length) and **Prepared in** (prepare time) per story.
 - `GET /api/v1/segments`: `audio_ms`, `prepare_ms`.
 - `GET /api/v1/log`: timestamps of `ready`, `on_air` and `done` for every segment (gap = next `on_air` − previous `done`).

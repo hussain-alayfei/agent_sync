@@ -6,9 +6,11 @@ approved text here over a small API and shows the broadcast to viewers.
 
 ```
 Your newsroom backend ──x-api-key──►  Zaid backend  (this folder, one Node process)
-                                         ├─ /admin    keys for LiveKit, ElevenLabs, Runway + tests + API key
-                                         ├─ /studio   control room: rundown, approve, withdraw, breaking, go live
+                                         ├─ /admin    the console: studio (rundown, approve, breaking, go live),
+                                         │            connections (LiveKit, ElevenLabs, Runway keys + tests),
+                                         │            website & API (API key, embed code, event webhook), presenter log
                                          ├─ /api/v1   the same controls for your backend (API.md)
+                                         ├─ webhook   every event pushed, signed, to your systems (docs/08)
                                          └─ presenter (LiveKit Agent "Zaid", started and watched by the server)
                                                ├─ ElevenLabs eleven_v4_turbo: audio prepared ahead, segment by segment
                                                ├─ Runway Character: lip-syncs to that audio (optional)
@@ -44,11 +46,11 @@ npm start                      # http://localhost:8795  (PORT to change)
 ```
 
 The first start prints an admin password and saves it in `data/admin-password.txt`
-(or set `ADMIN_PASSWORD` yourself). Open `/admin`, sign in, paste the keys, press **Test** for each service,
-**Play sample** to hear the voice, then **Save**. The presenter restarts with the new keys and shows
-"connected to LiveKit".
+(or set `ADMIN_PASSWORD` yourself). Open `/admin`, sign in, and on **Connections** paste the keys, press **Test connection** for each service and
+**Play a voice sample** to hear the voice, then **Save connections**. The presenter restarts with the new keys and
+the sidebar shows "Presenter: connected".
 
-Then open `/studio` → «ديمو (3 أخبار)» → «تجهيز الاستوديو» → open `/watch` and click «شاهد البث» → «على الهواء».
+Then on the console: **Studio** → **Load demo stories** → **Prepare** → open `/watch` and click **Watch live** → **Go live**.
 
 ### Docker
 
@@ -63,7 +65,7 @@ persistent disk: it holds the keys and the rundown.
 
 ### Settings by environment (optional)
 
-Keys typed on the admin page win; these are only a fallback, handy for container secrets.
+Keys typed on the console win; these are only a fallback, handy for container secrets.
 
 | Variable | Meaning |
 |---|---|
@@ -74,11 +76,13 @@ Keys typed on the admin page win; these are only a fallback, handy for container
 | `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` | ElevenLabs |
 | `RUNWAYML_API_SECRET`, `RUNWAY_AVATAR_ID` (or `RUNWAY_PRESET_ID`) | Runway |
 | `ALLOWED_ORIGINS` | Your website origins, comma separated |
+| `PRESENTER_NAME` | Name shown to viewers (default Zaid) |
+| `WEBHOOK_URL` | Where to push every event (see docs/08-realtime-relay.md) |
 
 ## Connect your website
 
-1. Admin page → **Connect your website**: copy the API key into your backend's secrets, and add your site's
-   origin under "Allowed website origins".
+1. Console → **Website & API**: copy the API key into your backend's secrets, and add your site's
+   address under "Allowed website addresses".
 2. Your backend: when an editor approves a story, `POST /api/v1/segments` with `approved: true`; start with
    `POST /api/v1/broadcast/start`; breaking news with `POST /api/v1/breaking`; end with `POST /api/v1/broadcast/end`.
 3. Your front end: embed `https://<zaid-server>/watch?embed=1`, or build your own player with a token from
@@ -96,17 +100,17 @@ Everything is in [API.md](API.md).
 | `lib/store.js` | Rundown, studio state and log (`data/state.json`) |
 | `lib/rundown.js` | Director rules and the on-air loop (prepare ahead, breaking insert, withdrawn blocked) |
 | `lib/tts.js` | ElevenLabs v4 Turbo over the Text to Dialogue WebSocket → PCM 24 kHz |
-| `lib/checks.js` | The admin page's Test and Play sample buttons |
+| `lib/checks.js` | The console's Test connection and Play a voice sample buttons |
 | `lib/worker.js` | Starts, restarts and logs the presenter process |
-| `public/` | `admin.html` (English), `studio.html` (Arabic), `watch.html` (Arabic) |
+| `public/` | `console.html` (the console at `/admin` and `/studio`), `watch.html` (viewer page) |
 
 ## Security
 
 - Provider keys are stored only on this server (`data/settings.json`, file mode 600 on Linux) and are never sent
-  back to a browser (the admin page sees the last 4 characters).
+  back to a browser (the console shows the last 4 characters).
 - Admin sign-in: scrypt-hashed password, HttpOnly SameSite=Strict session cookie (12 h, `Secure` behind HTTPS),
   10 attempts per 10 minutes per address. Sessions are in memory: a restart signs everyone out.
-- `/api/v1` needs the API key (constant-time check). "New key" on the admin page revokes the old one at once.
+- `/api/v1` needs the API key (constant-time check). "Replace key" on the console revokes the old one at once.
 - Viewers get LiveKit tokens that can only subscribe (no publishing), valid 2 hours.
 - The presenter talks to the server over a loopback-only internal API with a random token per start.
 - The presenter only joins a room this server asked for; leftover LiveKit jobs are refused.
@@ -118,7 +122,7 @@ Everything is in [API.md](API.md).
 - Runway: billed per minute of character video (see Runway's API pricing); the session lasts at most 30 minutes
   per broadcast.
 - LiveKit: participant and agent minutes (LiveKit Cloud has a free tier).
-- One studio per server: one broadcast at a time, one LiveKit room (name set on the admin page). For several
+- One studio per server: one broadcast at a time, one LiveKit room (name set on the console → Settings). For several
   channels, run several servers with different room and agent names.
 - Measured (2026-11-24, voice only, LiveKit Saudi Arabia region): preparing a segment 1.1–1.9 s for 5–10 s of
   audio, done while the previous one plays; gap between segments about 0.2–0.4 s; prepare → on air about 4 s.
@@ -130,7 +134,7 @@ Everything is in [API.md](API.md).
 |---|---|
 | Presenter "waiting for LiveKit keys" | Fill and save the three LiveKit fields |
 | Presenter "stopped, restarting" | Admin → Presenter log. Usually a wrong LiveKit key/URL |
-| Prepare says the presenter is not connected | Wait until the admin page shows "connected to LiveKit" |
-| Broadcast ends with "failed: ElevenLabs…" | ElevenLabs key, voice ID or credits; use Test and Play sample |
+| Prepare says the presenter is not connected | Wait until the console shows "Presenter: connected" |
+| Broadcast ends with "failed: ElevenLabs…" | ElevenLabs key, voice ID or credits; use Test connection and Play a voice sample |
 | No face, log shows `runway_failed` | The error text is in the log: credits, wrong character ID or type (custom vs preset) |
 | Two servers on one LiveKit project | Give each a different agent name and room name (Advanced) |
