@@ -1,0 +1,17 @@
+{
+  "name": "zaid-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zaid: live AI news presenter backend (LiveKit Agent + ElevenLabs voice + Runway face) with an admin page and an integration API.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@livekit/agents": "1.10.1",
+    "@livekit/agents-plugin-runway": "1.10.1",
+    "@livekit/rtc-node": "1.2.3",
+    "livekit-server-sdk": "2.20.1"
+  }
+}

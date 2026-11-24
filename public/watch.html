@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>زيد — البث المباشر</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#111; --muted:#6b6b6b; --bg:#0d0f12; --accent:#b3261e; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Almarai',system-ui,sans-serif; background:var(--bg); color:#fff; min-height:100vh; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:14px; padding:12px 20px; background:#000; }
+  header h1 { font-size:17px; margin:0; }
+  #live { background:var(--accent); font-size:12px; padding:3px 8px; visibility:hidden; }
+  #live.on { visibility:visible; }
+  #status { margin-inline-start:auto; font-size:13px; color:#aaa; }
+  main { flex:1; position:relative; display:flex; align-items:center; justify-content:center; }
+  video { width:100%; height:100%; max-height:calc(100vh - 48px); object-fit:contain; background:#000; }
+  #placeholder { text-align:center; color:#aaa; }
+  #placeholder b { display:block; font-size:42px; color:#fff; margin-bottom:8px; }
+  #lower { position:absolute; left:0; right:0; bottom:0; padding:0 0 18px; display:none; }
+  #lower.on { display:block; }
+  #headline { display:inline-block; background:var(--accent); font-weight:700; font-size:20px; padding:8px 22px; margin-inline-start:24px; }
+  #headline.breaking::before { content:'عاجل · '; }
+  #caption { background:rgba(0,0,0,.78); font-size:20px; line-height:1.8; padding:10px 24px; }
+  #start { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.6); }
+  body.embed header { display:none; }
+  body.embed video { max-height:100vh; }
+  button { font:inherit; font-size:17px; padding:12px 28px; border:0; background:#fff; color:#111; cursor:pointer; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.25.0/dist/livekit-client.umd.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>زيد — نشرة الأخبار</h1>
+  <span id="live">مباشر</span>
+  <span id="status">…</span>
+</header>
+<main>
+  <video id="video" autoplay playsinline hidden></video>
+  <div id="placeholder"><b>زيد</b>بانتظار بدء البث</div>
+  <div id="lower"><div id="headline"></div><div id="caption"></div></div>
+  <div id="start"><button id="join">شاهد البث</button></div>
+</main>
+<script>
+const $ = id => document.getElementById(id)
+const { Room, RoomEvent, Track } = LivekitClient
+let room, joining = false
+if (new URLSearchParams(location.search).has('embed')) document.body.classList.add('embed')
+fetch('/api/public/status').then(r => r.json()).then(s => {
+  $('status').textContent = s.state === 'live' ? 'البث شغّال' : s.state === 'ended' ? 'انتهى آخر بث' : 'لا يوجد بث الآن'
+}).catch(() => {})
+
+$('join').onclick = async () => {
+  if (joining) return
+  joining = true
+  $('start').style.display = 'none'
+  const r = await fetch('/api/public/viewer-token')
+  const j = await r.json()
+  if (!r.ok) { $('status').textContent = j.error; joining = false; $('start').style.display = ''; return }
+  room = new Room({ adaptiveStream: true })
+  room.on(RoomEvent.TrackSubscribed, (track, pub, participant) => {
+    if (track.kind === Track.Kind.Video) { track.attach($('video')); $('video').hidden = false; $('placeholder').style.display = 'none' }
+    if (track.kind === Track.Kind.Audio) { const el = track.attach(); document.body.appendChild(el) }
+  })
+  room.on(RoomEvent.TrackUnsubscribed, track => { if (track.kind === Track.Kind.Video) { $('video').hidden = true; $('placeholder').style.display = '' } track.detach().forEach(el => { if (el.tagName === 'AUDIO') el.remove() }) })
+  room.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
+    if (topic !== 'zaid') return
+    const e = JSON.parse(new TextDecoder().decode(payload))
+    if (e.type === 'segment') {
+      $('lower').classList.add('on'); $('live').classList.add('on')
+      $('headline').textContent = e.headline; $('headline').className = e.kind === 'breaking' ? 'breaking' : ''
+      $('caption').textContent = e.script
+    }
+    if (e.type === 'end') { $('lower').classList.remove('on'); $('live').classList.remove('on'); $('placeholder').innerHTML = '<b>زيد</b>انتهى البث' }
+  })
+  room.on(RoomEvent.Disconnected, () => { $('status').textContent = 'انقطع الاتصال'; joining = false; $('start').style.display = '' })
+  await room.connect(j.url, j.token)
+  await room.startAudio()
+  $('status').textContent = 'متصل'
+}
+</script>
+</body>
+</html>
