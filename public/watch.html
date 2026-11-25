@@ -89,7 +89,8 @@ $('join').onclick = async () => {
       $('lower').classList.add('on'); $('live').classList.add('on'); $('status').textContent = STATE.live
       const rtl = /[֐-ࣿ]/.test(e.script) // Hebrew/Arabic script → right to left
       $('lower').dir = rtl ? 'rtl' : 'ltr'
-      $('headline').textContent = (e.kind === 'breaking' ? (rtl ? 'عاجل · ' : 'Breaking · ') : '') + e.headline
+      const label = rtl ? 'عاجل' : 'Breaking'
+      $('headline').textContent = e.kind === 'breaking' && !e.headline.trim().startsWith(label) ? label + ' · ' + e.headline : e.headline
       $('caption').textContent = e.script
       $('ph-text').textContent = 'Voice only'
     }

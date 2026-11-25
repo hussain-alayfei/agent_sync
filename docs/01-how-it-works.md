@@ -7,7 +7,7 @@
 | **Your newsroom** (backend + editors) | Writes, checks and approves stories. Owns the wording | Your servers |
 | **Zaid backend** (this repo) | Keeps the rundown, runs the presenter, gives you an API, a web console and an event webhook | One always-on server (yours) |
 | **Zaid, the presenter** | A LiveKit Agent: joins the studio room, reads approved segments in order, handles breaking news | Inside the Zaid backend (child process) |
-| **ElevenLabs** | Zaid's voice: turns each approved script into audio (`eleven_v4_turbo`) | ElevenLabs cloud |
+| **ElevenLabs** | Zaid's voice: turns each approved script into audio (`eleven_v3` by default; the model is a setting) | ElevenLabs cloud |
 | **Runway** | Zaid's face: a Runway Character that lip-syncs to Zaid's audio and publishes video | Runway cloud |
 | **LiveKit** | The live "TV channel": a WebRTC room that carries Zaid's audio and video to every viewer | LiveKit Cloud |
 | **Your website** | Shows the room (iframe or your own player) | Viewers' browsers |
@@ -66,6 +66,6 @@ text and his voice. The script is spoken exactly as approved, so the newsroom st
 | `server.js` | HTTP server: console (`/admin`, `/studio`), `/watch`, `/api/v1`, `/api/public`, live events, webhook; starts and restarts the presenter |
 | `agent.js` | The presenter (LiveKit Agents for Node). Starts Runway if configured, then runs the rundown |
 | `lib/rundown.js` | Director rules and the on-air loop |
-| `lib/tts.js` | ElevenLabs `eleven_v4_turbo` over the Text to Dialogue WebSocket |
+| `lib/tts.js` | ElevenLabs speech for the chosen model (v4 Turbo over the Text to Dialogue WebSocket, the others over HTTP) |
 | `lib/store.js` | Rundown, studio state and log, saved in `data/state.json` |
 | `lib/config.js` | Keys and options from the console (`data/settings.json`) |

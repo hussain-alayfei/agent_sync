@@ -393,6 +393,7 @@ dl.facts dd { margin: 0; }
         <div class="block-head"><h2>Presenter and studio</h2></div>
         <div class="block-body grid2">
           <div class="field"><label for="o-PRESENTER_NAME">Presenter name</label><input type="text" id="o-PRESENTER_NAME" maxlength="40"><span class="help">Shown to viewers and in this console.</span></div>
+          <div class="field"><label for="o-TTS_MODEL">Speech model</label><select id="o-TTS_MODEL"><option value="eleven_v3">Eleven v3 (most natural, about 1 credit per character)</option><option value="eleven_v4">Eleven v4</option><option value="eleven_v4_turbo">Eleven v4 Turbo (faster, half the cost)</option><option value="eleven_multilingual_v2">Multilingual v2</option><option value="eleven_flash_v2_5">Flash v2.5 (fastest)</option><option value="eleven_turbo_v2_5">Turbo v2.5</option></select><span class="help">Audio is prepared while the previous story plays, so a slower model does not add gaps.</span></div>
           <div class="field"><label for="o-LANGUAGE">Speech language code</label><input type="text" id="o-LANGUAGE" maxlength="3"><span class="help"><code>ar</code> for Arabic, <code>en</code> for English.</span></div>
           <div class="field"><label for="o-ROOM_NAME">LiveKit room name</label><input type="text" id="o-ROOM_NAME"><span class="help">One room per studio.</span></div>
           <div class="field"><label for="o-AGENT_NAME">Agent name</label><input type="text" id="o-AGENT_NAME"><span class="help">Must be unique in your LiveKit project.</span></div>
@@ -417,7 +418,7 @@ dl.facts dd { margin: 0; }
 const $ = s => document.querySelector(s)
 const SERVICES = {
   livekit: { name: 'LiveKit', role: 'Carries the live broadcast to viewers', link: 'https://cloud.livekit.io', where: 'Project → Settings → API keys' },
-  elevenlabs: { name: 'ElevenLabs', role: 'The presenter’s voice', link: 'https://elevenlabs.io/app/settings/api-keys', where: 'Settings → API keys; Voices → voice → ID' },
+  elevenlabs: { name: 'ElevenLabs', role: 'The presenter’s voice (the speech model is under Settings)', link: 'https://elevenlabs.io/app/settings/api-keys', where: 'Settings → API keys; Voices → voice → ID' },
   runway: { name: 'Runway', role: 'The presenter’s face (optional; voice only without it)', link: 'https://dev.runwayml.com', where: 'Developer portal → API keys; Characters' }
 }
 const CONTROL = { idle: 'Off air', preparing: 'Preparing', ready: 'Ready to go live', live: 'On air', ended: 'Broadcast ended' }
@@ -638,6 +639,7 @@ function formValues () {
   const v = {}
   for (const f of S.fields) { const x = $('#f-' + f.key).value.trim(); if (x) v[f.key] = x }
   v.RUNWAY_AVATAR_TYPE = $('#o-RUNWAY_AVATAR_TYPE').value
+  v.TTS_MODEL = S.options.TTS_MODEL
   return v
 }
 async function test (g, btn) {
@@ -661,7 +663,7 @@ async function saveKeys (values) {
   toast(r.changed.length ? `Connections saved. Presenter: ${r.presenter}.` : 'Nothing changed')
   await loadSettings()
 }
-$('#keys').onsubmit = run(async e => { e.preventDefault(); const v = formValues(); delete v.RUNWAY_AVATAR_TYPE; await saveKeys(v) })
+$('#keys').onsubmit = run(async e => { e.preventDefault(); const v = formValues(); delete v.RUNWAY_AVATAR_TYPE; delete v.TTS_MODEL; await saveKeys(v) })
 
 // ---------- website & api
 function renderWebsite () {
@@ -735,10 +737,10 @@ setInterval(refreshWorker, 3000)
 $('#restart').onclick = run(async () => { await call('POST', '/admin/api/worker/restart'); toast('Presenter restarting'); setTimeout(refreshWorker, 1200) })
 
 // ---------- settings
-function renderSettings () { for (const k of ['PRESENTER_NAME', 'LANGUAGE', 'ROOM_NAME', 'AGENT_NAME']) $('#o-' + k).value = S.options[k] }
+function renderSettings () { for (const k of ['PRESENTER_NAME', 'TTS_MODEL', 'LANGUAGE', 'ROOM_NAME', 'AGENT_NAME']) $('#o-' + k).value = S.options[k] }
 $('#adv').onsubmit = run(async e => {
   e.preventDefault()
-  const options = Object.fromEntries(['PRESENTER_NAME', 'LANGUAGE', 'ROOM_NAME', 'AGENT_NAME'].map(k => [k, $('#o-' + k).value]))
+  const options = Object.fromEntries(['PRESENTER_NAME', 'TTS_MODEL', 'LANGUAGE', 'ROOM_NAME', 'AGENT_NAME'].map(k => [k, $('#o-' + k).value]))
   const r = await call('PUT', '/admin/api/settings', { options })
   toast(r.changed.length ? `Settings saved. Presenter: ${r.presenter}.` : 'Nothing changed')
   await loadSettings()

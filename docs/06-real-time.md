@@ -18,6 +18,7 @@ approve ─► (API, ms) ─► rundown ─► director tick (≤ 0.8 s) ─► 
 | Step | Time |
 |---|---|
 | ElevenLabs `eleven_v4_turbo`, one segment of 75–110 characters (5–10 s of audio) | 1.1–1.9 s to prepare |
+| ElevenLabs `eleven_v3` (default since 2026-11-25), 4-story show, 90–150 characters each | 3.8–5.3 s to prepare (hidden: done while the previous story plays); prepare → ready ≈ 10 s; gaps 0.15 s; breaking news right after the story on air; an edited story played in its new version; a withdrawn story skipped |
 | `prepare` → studio ready (opening audio done) | ≈ 4 s |
 | Gap between two segments | ≈ 0.2–0.4 s |
 | A full 3-story show with **no viewer connected** (start → last story read) | 37 s for 26.6 s of audio |

@@ -40,6 +40,7 @@ function workerEnv () {
     RUNWAY_AVATAR_TYPE: config.get('RUNWAY_AVATAR_TYPE'),
     ZAID_AGENT_NAME: config.get('AGENT_NAME'),
     ZAID_LANGUAGE: config.get('LANGUAGE'),
+    ZAID_TTS_MODEL: config.get('TTS_MODEL'),
     ZAID_PRESENTER_NAME: config.get('PRESENTER_NAME'),
     ZAID_INTERNAL_URL: `http://127.0.0.1:${PORT}`,
     ZAID_INTERNAL_TOKEN: INTERNAL_TOKEN
