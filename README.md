@@ -12,7 +12,7 @@ Your newsroom backend ──x-api-key──►  Zaid backend  (this folder, one 
                                          ├─ /api/v1   the same controls for your backend (API.md)
                                          ├─ webhook   every event pushed, signed, to your systems (docs/08)
                                          └─ presenter (LiveKit Agent "Zaid", started and watched by the server)
-                                               ├─ ElevenLabs (eleven_v3 by default): audio prepared ahead, segment by segment
+                                               ├─ ElevenLabs (eleven_v4 by default): audio prepared ahead, segment by segment
                                                ├─ Runway Character: lip-syncs to that audio (optional)
                                                └─ LiveKit room: voice (+ face) + headline/caption data
 Your website (viewers) ──/api/public/viewer-token or the /watch iframe──► LiveKit room
@@ -77,7 +77,7 @@ Keys typed on the console win; these are only a fallback, handy for container se
 | `RUNWAYML_API_SECRET`, `RUNWAY_AVATAR_ID` (or `RUNWAY_PRESET_ID`) | Runway |
 | `ALLOWED_ORIGINS` | Your website origins, comma separated |
 | `PRESENTER_NAME` | Name shown to viewers (default Zaid) |
-| `TTS_MODEL` | Speech model: `eleven_v3` (default), `eleven_v4`, `eleven_v4_turbo`, `eleven_multilingual_v2`, `eleven_flash_v2_5`, `eleven_turbo_v2_5` |
+| `TTS_MODEL` | Speech model: `eleven_v4` (default), `eleven_v3`, `eleven_v4_turbo`, `eleven_multilingual_v2`, `eleven_flash_v2_5`, `eleven_turbo_v2_5` |
 | `WEBHOOK_URL` | Where to push every event (see docs/08-realtime-relay.md) |
 
 ## Connect your website
@@ -119,7 +119,7 @@ Everything is in [API.md](API.md).
 
 ## Costs and limits
 
-- ElevenLabs: about 1 credit per character with `eleven_v3` (default), about half with `eleven_v4_turbo` or flash/turbo v2.5. Change it on the console → Settings → Speech model.
+- ElevenLabs: about 1 credit per character with `eleven_v4` (default) or `eleven_v3`, about half with `eleven_v4_turbo` or flash/turbo v2.5. Change it on the console → Settings → Speech model.
 - Runway: billed per minute of character video (see Runway's API pricing); the session lasts at most 30 minutes
   per broadcast.
 - LiveKit: participant and agent minutes (LiveKit Cloud has a free tier).

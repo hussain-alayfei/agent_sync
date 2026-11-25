@@ -47,7 +47,7 @@ through LiveKit's TCP/TLS fallback, with a little more delay.
 
 | Service | Unit | Measured / rough |
 |---|---|---|
-| ElevenLabs `eleven_v3` (default) | credits per character of script | about 1 credit per character (a 100-character segment ≈ 100 credits) |
+| ElevenLabs `eleven_v4` (default) or `eleven_v3` | credits per character of script | about 1 credit per character (a 100-character segment ≈ 100 credits) |
 | ElevenLabs `eleven_v4_turbo`, flash/turbo v2.5 | same | half or less (measured ≈ 0.24 credit per character on v4 Turbo) |
 | Runway Characters | per minute of character session | billed by Runway per minute; one session per show, 30 minutes maximum per show in this code (`maxDuration`) |
 | LiveKit | agent + participant minutes, bandwidth | free tier for tests |

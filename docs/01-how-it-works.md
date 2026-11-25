@@ -7,7 +7,7 @@
 | **Your newsroom** (backend + editors) | Writes, checks and approves stories. Owns the wording | Your servers |
 | **Zaid backend** (this repo) | Keeps the rundown, runs the presenter, gives you an API, a web console and an event webhook | One always-on server (yours) |
 | **Zaid, the presenter** | A LiveKit Agent: joins the studio room, reads approved segments in order, handles breaking news | Inside the Zaid backend (child process) |
-| **ElevenLabs** | Zaid's voice: turns each approved script into audio (`eleven_v3` by default; the model is a setting) | ElevenLabs cloud |
+| **ElevenLabs** | Zaid's voice: turns each approved script into audio (`eleven_v4` by default; the model is a setting) | ElevenLabs cloud |
 | **Runway** | Zaid's face: a Runway Character that lip-syncs to Zaid's audio and publishes video | Runway cloud |
 | **LiveKit** | The live "TV channel": a WebRTC room that carries Zaid's audio and video to every viewer | LiveKit Cloud |
 | **Your website** | Shows the room (iframe or your own player) | Viewers' browsers |
